@@ -1,0 +1,135 @@
+[SIZE="6"][FONT="Franklin Gothic Medium"][B]CS:GO Cheat Making 101[/B][/FONT][/SIZE]
+[B][I]
+NOTE: This guide is still a HUGE work in progress. I'll explain further in the guide how you can help me expanding this![/I][/B]
+
+[B][I]Structure of the guide:[/I][/B] (prone to changes)
+[B]Chapter 0[/B] ~ Welcome to CS:GO Cheat Making 101! The requirements
+[B]Chapter 1[/B] ~ Explaining CS:GO
+[I]Chapter 1.1[/I] ~ Brief introduction to the Source Engine
+[I]Chapter 1.2[/I] ~ Different types of cheats
+[I]Chapter 1.3[/I] ~ Talking about VAC: Ring0 and Ring3
+[B]Chapter 2[/B] ~ External Cheats: The starting point
+[I]Chapter 2.1[/I] ~ Brief introduction to WinAPI
+[I]Chapter 2.2[/I] ~ Managing CS:GO memory: RPM and WPM
+[I]Chapter 2.3[/I] ~ Getting CS:GO module info
+[I]Chapter 2.4[/I] ~ Building a memory management class
+[B]Chapter 3[/B] ~ Offsets
+[I]Chapter 3.1[/I] ~ Using our class and the offsets to make our first bhop
+[I]Chapter 3.2[/I] ~ Netvars
+[I]Chapter 3.3[/I] ~ Getting offsets dynamically: Pattern Scanning
+[I]Chapter 3.4[/I] ~ Getting netvars dynamically: Netvar Managers and recursion
+[B]Chapter 4[/B] ~ Internal Cheats: The advantages
+[I]Chapter 4.1[/I] ~ Calling exported module functions
+[I]Chapter 4.2[/I] ~ CreateInterface: Getting those interfaces
+[I]Chapter 4.3[/I] ~ Hooking methods: VMT hooking
+[I]Chapter 4.4[/I] ~ A look at the Source SDK
+[I]Chapter 4.5[/I] ~ Common functions to hook
+[I]Chapter 4.6[/I] ~ A look at CreateMove: Making our first internal bhop
+[I]Chapter 4.7[/I] ~ Drawing using ISurface
+
+[SIZE="5"][FONT="Franklin Gothic Medium"][B]Chapter 0[/B][/FONT][/SIZE]
+[SIZE="4"][FONT="Franklin Gothic Medium"][B]Welcome to CS:GO Cheat Making 101! The requirements[/B][/FONT][/SIZE]
+
+Hi and welcome to CS:GO Cheat Making 101, a "all-in-one" guide for CS:GO cheat making! Please notice that this guide is still a huge work in progress and it is prone to changes. Since I'm not really pro when it comes to CS:GO cheat making, I'd like you guys to help me building this guide and expanding it as large as possible. I'll cover a lot (but not all) of aspects of CS:GO cheats and I'll try to be as clear as possible.
+
+Now, let's take a look at the requirements for this guide. I see many people here trying to approach CS:GO cheat making (in various languages) just to make cheats for them. I mean, that's great, you want to learn, but that's not the right approach. If you have absolutely 0 knownledge of programming in general, following this guide will be really difficult, so from you I want to at least know one programming language and being able to think in terms of programming, you know what I mean.
+Some people here even learnt a programming language by making CS:GO cheats, still it will be really difficult if you don't have a certain "mindset" ready.
+
+I'm not writing this guide with the purpose of showing my (near to no) knownledge about this stuff. I'm writing this guide as a starting point to many ppl out there trying to start in this sector. As I said some months ago, all I needed when I started here was a really solid base to learn from. In order to make this guide the best and the most complete guide about CS:GO cheat making, I need your help. The help of people with a real huge experience in this sector, that would be really great and you'll sort of help this community. :asskiss:
+
+[SIZE="5"][FONT="Franklin Gothic Medium"][B]Chapter 1[/B][/FONT][/SIZE]
+[SIZE="4"][FONT="Franklin Gothic Medium"][B]Explaining CS:GO[/B][/FONT][/SIZE]
+
+[B]C[/B]ounter [B]S[/B]trike: [B]G[/B]lobal [B]O[/B]ffensive (aka CS:GO), as many of you know, is a first person shooter game with a lot of focus on the competitive aspect. The game requires a certain set of skills and ability to pwn your enemies, and when it comes to skill we all know that... we'll come to cheats! CS:GO is probably one of the most (if not the most) full of cheaters paid game, and the creators (Valve + Hidden Path Entertainment) can't do anything for it. Throughout the various updates of the game, they've released several ways and workarounds to trying stopping cheaters (always failing), but in the end we all know that they won't stop cheaters, for obvious money reasons. Getting a cheap CS:GO copy is really easy, as it is really easy to cheat. There are near to no protections compared to other paid games (well, don't take me wrong, there are some cheap protections like untrusted checks but...) and the community itself is full of cheaters. Just for example, this section of UC is probably one of the most visited and active UC sections (mods, get ready to prove the opposite).
+
+But we are not here to talk about how full of cheaters CS:GO is, we are here to learn about making a cheat! This forum is full of references, tutorials, sources about how to make certain stuff for CS:GO, infact I'll put at the end of each chapter a little list of reference links which I really recommend to read to get deeper on the concept explained in the chapter.
+
+Reference links for this section:
+[url]https://en.wikipedia.org/wiki/Counter-Strike:_Global_Offensive[/url]
+[url]https://en.wikipedia.org/wiki/Valve_Corporation[/url]
+[url]https://en.wikipedia.org/wiki/Hidden_Path_Entertainment[/url]
+
+[SIZE="3"][FONT="Franklin Gothic Medium"][I][B]Brief introduction to the Source Engine[/B][/I][/FONT][/SIZE]
+
+CS:GO runs on the Source Engine, a really famous game engine used to make a lot of games that we all know and love (a prime example is Half Life or Left 4 Dead).
+The Source is well known for his great physics system (that we saw in action in HL) but in general it is a great engine to make games on. Another great advantage is his flexibility, which makes the life of modders way easier.
+
+It is greatly documented on internet and here, and it's (only in part) open source. This allows us to get a shit-ton of info about the game itself without needing to reverse it completely (don't get me wrong, you'll still need to reverse it on certain situations).
+Since CS:GO is built upon the Source Engine, a large part of what we'll do to modify the game (to get an advantage) is related to it, especially when we are going internal.
+
+Reference links for this section:
+[url]https://en.wikipedia.org/wiki/Source_(game_engine[/url])
+[url]https://developer.valvesoftware.com/wiki/SDK_Docs[/url]
+[url]https://github.com/ValveSoftware/source-sdk-2013[/url]
+
+[SIZE="3"][FONT="Franklin Gothic Medium"][I][B]Different types of cheats[/B][/I][/FONT][/SIZE]
+
+Before getting into cheat making, it's important to know what are we going to do.
+Usually (not only for CS:GO) there are 2 types of cheats: Internals and Externals.
+The difference between those two types is huge:
+
+An [B]EXTERNAL[/B] cheat is an [B]EXE[/B] which is able, through an HANDLE (think it like a bridge) to CS:GO process, to read and write memory. By reading and writing certain areas of memory we are able to make our cheats.
+The main disadvantage of externals is the fact that we are not in sync with the game's thread, which can lead to "unexpected" results (a prime example are external skinchangers, since they are not in sync with the game's thread you won't achieve consistency especially when trying to change the knife model).
+We are also forced to read and write through specific functions (we'll see later) that are heavy to call.
+
+An [B]INTERNAL[/B] cheat is a [B]DLL[/B] which is injected directly into CS:GO and it is able to directly read and write CS:GO memory, through raw pointers. Internally, we can also get interfaces and call virtual functions, which makes our lives way easier. We can also hook some functions to kind of "redirect" them and make them doing what we want.
+
+There is still an open discussion about what type of cheat is the most detectable.
+
+There is another type of cheat, called "Internal/External", which is basically a DLL which is injected into any 32-bit process and from there it operates like a normal external. I think that we can consider this type of cheat external, because in the end all the operations we do are the same as external and we don't do anything internal.
+
+We'll start with external, which are easier to learn but hard to master, while internal cheats are hard to learn... but easy to master!
+
+Reference links for this section:
+[URL="http://www.unknowncheats.me/forum/counterstrike-global-offensive/151797-ezfrags-cs-multihack-public-rage-legit.html"]An example of an external cheat (EZFrags)[/URL]
+[URL="http://www.unknowncheats.me/forum/counterstrike-global-offensive/183376-fx-cs-public-release.html"]An example of an internal cheat (FX)[/URL]
+[URL="http://www.unknowncheats.me/forum/counterstrike-global-offensive/159299-internal-external-customizable-multi-hack.html"]An example of an internal/external cheat[/URL]
+
+[SIZE="3"][FONT="Franklin Gothic Medium"][I][B]Talking about VAC: Ring0 and Ring3[/B][/I][/FONT][/SIZE]
+[I]
+(NOTE: I may say something wrong or bullshit in this specific section. VAC experts and kernel mode experts, help me! <3)[/I]
+
+The main anticheat that CS:GO is using is the [B]V[/B]alve [B]A[/B]nti-[B]C[/B]heat (aka VAC), which is supposed to block cheaters but we all know that it fails miserably. Basically, the VAC is a joke. You don't need to be too much afraid of it since it won't bust you if you aren't using a public cheat. The VAC is using signature scanning in order to detect cheats. When a cheat becomes detected by VAC it means that the VAC detected his signature (which is an unique identifier for something) and stored it in his database. When you are using a cheat with a detected signature, you are fucked (flagged).
+VAC bans are completely automatic and can take a lot of time to ban you, because it needs to know 100% that you are cheating, in order to avoid false positives.
+
+You have to know about Ring0 and Ring3 to get a feeling about how VAC is a real joke. Basically, Intel processors (x86 but also others) to protect critical resources like IO, memory, ports, etc provide some privilege levels (0 being most privilege and 3 being last) aka UserMode and KernelMode.
+So, the OS runs kernel code in Ring0, and user code in Ring3.
+VAC operates in Ring3. Basically, if you make a Ring0 cheat you are good to go. But if you are capable of making a Ring0 cheat then all of this stuff should be a piece of cake at your eyes, you can leave.
+
+Reference links for this section:
+[url]https://en.wikipedia.org/wiki/Valve_Anti-Cheat[/url]
+[url]http://duartes.org/gustavo/blog/post/cpu-rings-privilege-and-protection/[/url]
+[url]https://en.wikipedia.org/wiki/Protection_ring[/url]
+
+[SIZE="5"][FONT="Franklin Gothic Medium"][B]Chapter 2[/B][/FONT][/SIZE]
+[SIZE="4"][FONT="Franklin Gothic Medium"][B]External Cheats: The starting point[/B][/FONT][/SIZE]
+
+We'll focus, for now, on external cheats, which you now know what they do (ref: 1.2 Different types of cheats)
+Writing external cheats serves as a really good starting point in this sector because externals are way more documented than internals and they are way easier to code and understand.
+However, once you get a really good grip on this type of cheat, you should consider switching internal which is (imho) fairly better. Still, you need the right knownledge.
+
+As I already explained, the purpose of external cheats is reading and writing the CS:GO memory in order to edit it, gain info and get a huge advantage over our enemies in game.
+An external cheat, however, isn't forced to manage CS:GO memory. For example, you can write a really good recoil control system (aka RCS) without needing to read or write anything. Still, the most consistent results can be achieved only by reading/writing memory. For example, you can make a bhop script that spams the space key without reading or writing any sector of memory, still the hops won't be consistent and the result can be shit. On the other side, by reading the memory to know exactly when to jump, you can achieve the consistency you want.
+In the end, it's all a matter of consistency.
+
+Reference links for this section:
+[URL="http://www.unknowncheats.me/forum/counterstrike-global-offensive/147103-peans-ahk-triggerbot-aka-colorbot-extension.html"]An example of color triggerbot, not interacting with CS:GO memory[/URL]
+[URL="http://www.unknowncheats.me/forum/counterstrike-global-offensive/168179-simple-bunny-hop-script.html"]An example of a really basic bhop, interacting with CS:GO memory (by me)[/URL]
+
+[SIZE="3"][FONT="Franklin Gothic Medium"][I][B]Brief introduction to the WinAPI[/B][/I][/FONT][/SIZE]
+
+I've stated multiple times that we need to manage CS:GO memory in order to achieve certain results with our external cheats. But how? The answer has got a name: The [B]Win[/B]dows [B]A[/B]pplication [B]P[/B]rogramming [B]I[/B]nterface! (aka WinAPI)
+
+The Windows OS allows us to use the WinAPI, which (basically speaking) is a set of C functions and structs implemented in [B]D[/B]ynamic [B]L[/B]ink [B]L[/B]ibraries (aka DLL). Don't get me wrong, you can still mix your C++ code style with the usage of WinAPI.
+There are, as you may know, three main groups of API: Kernel, [B]G[/B]raphics [B]D[/B]evice [B]I[/B]nterface (aka GDI) and User. You can find more infos about those 3 types on the reference links I'm going to provide, if you want to get deeper.
+
+Now that we know what we are going to mainly use in our externals, we can start talking about practically managing the CS:GO memory!
+
+Reference links for this section:
+[url]https://en.wikipedia.org/wiki/Windows_API[/url]
+[url]https://msdn.microsoft.com/en-us/library/cc433218(VS.85).aspx[/url]
+[url]http://www.infernodevelopment.com/c-win32-api-tutorial[/url]
+
+[B][I]...WORK IN PROGRESS...[/I][/B]
+
+This guide, as I already said, is not complete and still needs a lot of work. I'll update it with new sections and chapters throughout these days.
