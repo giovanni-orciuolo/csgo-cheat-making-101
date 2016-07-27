@@ -1,6 +1,6 @@
 [SIZE="6"][FONT="Franklin Gothic Medium"][B]CS:GO Cheat Making 101[/B][/FONT][/SIZE]
 [B][I]
-NOTE: This guide is still a HUGE work in progress. I'll explain further in the guide how you can help me expanding this![/I][/B]
+NOTE: This guide is still a HUGE work in progress. You can use the GitHub repo to push commits in order to modify and update this guide. Your help is important! [URL="https://github.com/DoubleHub/CSGOCheatMaking101/blob/master/Guide.txt"]*CLICK*[/URL][/I][/B]
 
 [B][I]Structure of the guide:[/I][/B] (prone to changes)
 [B]Chapter 0[/B] ~ Welcome to CS:GO Cheat Making 101! The requirements
@@ -45,6 +45,7 @@ I'm not writing this guide with the purpose of showing my (near to no) knownledg
 But we are not here to talk about how full of cheaters CS:GO is, we are here to learn about making a cheat! This forum is full of references, tutorials, sources about how to make certain stuff for CS:GO, infact I'll put at the end of each chapter a little list of reference links which I really recommend to read to get deeper on the concept explained in the chapter.
 
 Reference links for this section:
+[url]http://www.unknowncheats.me/wiki/Counter-Strike:_Global_Offensive[/url]
 [url]https://en.wikipedia.org/wiki/Counter-Strike:_Global_Offensive[/url]
 [url]https://en.wikipedia.org/wiki/Valve_Corporation[/url]
 [url]https://en.wikipedia.org/wiki/Hidden_Path_Entertainment[/url]
@@ -58,7 +59,8 @@ It is greatly documented on internet and here, and it's (only in part) open sour
 Since CS:GO is built upon the Source Engine, a large part of what we'll do to modify the game (to get an advantage) is related to it, especially when we are going internal.
 
 Reference links for this section:
-[url]https://en.wikipedia.org/wiki/Source_(game_engine[/url])
+[url]http://www.unknowncheats.me/wiki/Source_Engine[/url]
+[url]https://en.wikipedia.org/wiki/Source_(game_engine)[/url]
 [url]https://developer.valvesoftware.com/wiki/SDK_Docs[/url]
 [url]https://github.com/ValveSoftware/source-sdk-2013[/url]
 
