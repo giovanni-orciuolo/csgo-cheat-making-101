@@ -155,7 +155,7 @@ The first argument, the hProcess, is the actual HANDLE to the process we need to
 In order to get this HANDLE you've got several ways. 
 The most used way is to loop through all the process through Process32Next (and Process32First), using the helper struct PROCESSENTRY32, then in the loop comparing the current process name with the process name we are searching for, if the names are the same then we use the WinAPI function [URL="https://msdn.microsoft.com/it-it/library/windows/desktop/ms684320(v=vs.85).aspx"]OpenProcess[/URL] to open an handle to this process. Notice that, in order to be able to read and write, we will put the flag PROCESS_ALL_ACCESS in order to gain full privileges.
 
-[B]REMEMBER! An HANDLE must always be closed through [URL="https://msdn.microsoft.com/it-it/library/windows/desktop/ms724211(v=vs.85).aspx"]CloseHandle[/URL] once it's not used anymore, otherwise there will be a memory leak.[/B]
+[B]REMEMBER! An HANDLE must always be closed through [URL="https://msdn.microsoft.com/it-it/library/windows/desktop/ms724211(v=vs.85).aspx"]CloseHandle[/URL] once it's not used anymore![/B]
 
 This, however, is not the only way, of course. For example, if we are using managed languages like C# or VB.NET, there are way easier ways. However, I've explained the most common one.
 
@@ -167,4 +167,4 @@ RPM and WPM are not the only way to read and write process memory, it's just the
 
 [B][I]...WORK IN PROGRESS...[/I][/B]
 
-This guide, as I already said, is not complete and still needs a lot of work. I'll update it with new sections and chapters throughout these days.
+This guide, as I already said, is not complete and still needs a lot of work. I'll update it with new sections and chapters throughout these days. You can help me updating/correcting/getting better this guide using his [URL="https://github.com/DoubleHub/CSGOCheatMaking101/blob/master/Guide.txt"]GitHub repo[/URL].
