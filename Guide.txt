@@ -151,9 +151,9 @@ BOOL WINAPI ReadProcessMemory(
 
 [I]"_In_  HANDLE  hProcess"[/I]
 
-The first argument, the hProcess, is the actual HANDLE to the process we need to read memory from. Remember what I said in 1.2? In external cheats we use an HANDLE (like a bridge) to read and write memory.
+The first argument, the hProcess, is the actual [URL="https://msdn.microsoft.com/en-us/library/windows/desktop/ms724176(v=vs.85).aspx"]HANDLE[/URL] to the process we need to read memory from. Remember what I said in 1.2? In external cheats we use an HANDLE (like a bridge) to read and write memory.
 In order to get this HANDLE you've got several ways. 
-The most used way is to loop through all the process through Process32Next (and Process32First), using the helper struct PROCESSENTRY32, then in the loop comparing the current process name with the process name we are searching for, if the names are the same then we use the WinAPI function [URL="https://msdn.microsoft.com/it-it/library/windows/desktop/ms684320(v=vs.85).aspx"]OpenProcess[/URL] to open an handle to this process. Notice that, in order to be able to read and write, we will put the flag PROCESS_ALL_ACCESS in order to gain full privileges.
+The most used way is to loop through all the process through [URL="https://msdn.microsoft.com/en-us/library/windows/desktop/ms684836(v=vs.85).aspx"]Process32Next[/URL] (and [URL="https://msdn.microsoft.com/en-us/library/windows/desktop/ms684834(v=vs.85).aspx"]Process32First[/URL]), using the helper struct [URL="https://msdn.microsoft.com/en-us/library/windows/desktop/ms684839(v=vs.85).aspx"]PROCESSENTRY32[/URL], then in the loop comparing the current process name with the process name we are searching for, if the names are the same then we use the WinAPI function [URL="https://msdn.microsoft.com/it-it/library/windows/desktop/ms684320(v=vs.85).aspx"]OpenProcess[/URL] to open an handle to this process. Notice that, in order to be able to read and write, we will put the flag [URL="https://msdn.microsoft.com/it-it/library/windows/desktop/ms684880(v=vs.85).aspx"]PROCESS_ALL_ACCESS[/URL] in order to gain full privileges.
 
 [B]REMEMBER! An HANDLE must always be closed through [URL="https://msdn.microsoft.com/it-it/library/windows/desktop/ms724211(v=vs.85).aspx"]CloseHandle[/URL] once it's not used anymore![/B]
 
@@ -164,6 +164,16 @@ The other arguments are already well explained on the MSDN page, and we'll later
 WPM has got the same arguments, the only difference is that the third argument is a pointer pointing to the value we want to write, while in RPM is a pointer pointing to the variable that is gonna receive the value read from memory.
 
 RPM and WPM are not the only way to read and write process memory, it's just the most common one, since it's well documented and already implemented by the WinAPI itself. CS:GO doesn't detect WPM and RPM since a lot of legit processes use them constantly, and the anticheat (as I already stated) wants to avoid false positives.
+
+[SIZE="3"][FONT="Franklin Gothic Medium"][I][B]Getting CS:GO module infos[/B][/I][/FONT][/SIZE]
+
+One of the most useful things we can do in CS:GO memory is grabbing infos about a specific module (a DLL, like client.dll or engine.dll, but also others). When we'll get into offsets, you'll see how important is to know some stuff about different CS:GO modules. But how can we grab this useful info?
+As always, there are several methods, one is really similar to the method that I've explained previously about opening the process handle. The only difference is that instead of using [URL="https://msdn.microsoft.com/en-us/library/windows/desktop/ms684839(v=vs.85).aspx"]PROCESSENTRY32[/URL] and related funcs like [URL="https://msdn.microsoft.com/en-us/library/windows/desktop/ms684834(v=vs.85).aspx"]Process32First[/URL] and [URL="https://msdn.microsoft.com/en-us/library/windows/desktop/ms684836(v=vs.85).aspx"]Process32Next[/URL], you have to use [URL="https://msdn.microsoft.com/it-it/library/windows/desktop/ms684225(v=vs.85).aspx"]MODULEENTRY32[/URL] to store info and [URL="https://msdn.microsoft.com/it-it/library/windows/desktop/ms684218(v=vs.85).aspx"]Module32First[/URL]/[URL="https://msdn.microsoft.com/it-it/library/windows/desktop/ms684221(v=vs.85).aspx"]Next[/URL] to loop through the module list.
+
+Another way is to use the [URL="https://msdn.microsoft.com/it-it/library/windows/desktop/ms684229(v=vs.85).aspx"]MODULEINFO[/URL] structure and [URL="https://msdn.microsoft.com/it-it/library/windows/desktop/ms683201(v=vs.85).aspx"]GetModuleInformation[/URL] function, really handy when it comes to this kind of stuff.
+
+Now that we got the info that we want, we can use the base address of the module to access specific things (using offsets) in that module (we'll see, for example, grabbing the local player, or the local player health value).
+Another useful thing to know is the module size, we'll see his importance when we'll talk about pattern scanning.
 
 [B][I]...WORK IN PROGRESS...[/I][/B]
 
