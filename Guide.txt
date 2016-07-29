@@ -165,6 +165,9 @@ WPM has got the same arguments, the only difference is that the third argument i
 
 RPM and WPM are not the only way to read and write process memory, it's just the most common one, since it's well documented and already implemented by the WinAPI itself. CS:GO doesn't detect WPM and RPM since a lot of legit processes use them constantly, and the anticheat (as I already stated) wants to avoid false positives.
 
+Reference links for this section:
+[URL="http://pastebin.com/Bd6t5tcP"]Commented example of a common function to open an handle to a process (using WinAPI)[/URL]
+
 [SIZE="3"][FONT="Franklin Gothic Medium"][I][B]Getting CS:GO module infos[/B][/I][/FONT][/SIZE]
 
 One of the most useful things we can do in CS:GO memory is grabbing infos about a specific module (a DLL, like client.dll or engine.dll, but also others). When we'll get into offsets, you'll see how important is to know some stuff about different CS:GO modules. But how can we grab this useful info?
@@ -174,6 +177,9 @@ Another way is to use the [URL="https://msdn.microsoft.com/it-it/library/windows
 
 Now that we got the info that we want, we can use the base address of the module to access specific things (using offsets) in that module (we'll see, for example, grabbing the local player, or the local player health value).
 Another useful thing to know is the module size, we'll see his importance when we'll talk about pattern scanning.
+
+Reference links for this section:
+[URL="http://pastebin.com/GC9kTHcJ"]Commented example of a common function to get module info (using WinAPI)[/URL]
 
 [B][I]...WORK IN PROGRESS...[/I][/B]
 
