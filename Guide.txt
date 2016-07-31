@@ -254,8 +254,8 @@ Now, let's make the public functions:
 	    // If we are here it means that the Process32First call returned TRUE, but the first process
 	    // wasn't the process that we were searching for. Now we can loop through the processes
 	    // using Process32Next
-	    do
-	    {
+            while (Process32Next(hSnapshot, &ProcEntry))
+            {
 	        // We do the same check we did for Process32First
 	        if (!strcmp(ProcEntry.szExeFile, ProcessName.c_str()))
 	        {
@@ -269,7 +269,6 @@ Now, let's make the public functions:
 	            return true;
 	        }
 	    }
-	    while (Process32Next(hSnapshot, &ProcEntry));
 	    // Continue loop while the Process32Next call returns TRUE meaning that there are still processes to check
 	   
 	    // If we are here it means that the process has not been found or that there are no processes to scan for anymore.
@@ -328,7 +327,7 @@ The same thing can be done with the function to grab a new module from the proce
 	    // If we are here it means that the Module32First call returned TRUE, but the first module
 	    // wasn't the module that we were searching for. Now we can loop through the modules
 	    // using Module32Next
-	    do
+            while (Module32Next(hSnapshot, &ModEntry))
 	    {
 	        // We do the same check we did for Module32First
 	        if (!strcmp(ModEntry.szModule, ModuleName.c_str()))
@@ -342,7 +341,6 @@ The same thing can be done with the function to grab a new module from the proce
 	            return true;
 	        }
 	    }
-	    while (Module32Next(hSnapshot, &ModEntry));
 	    // Continue loop while the Module32Next call returns TRUE meaning that there are still modules to check
 	   
 	    // If we are here it means that the module has not been found or that there are no modules to scan for anymore.
