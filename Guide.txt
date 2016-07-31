@@ -181,6 +181,242 @@ Another useful thing to know is the module size, we'll see his importance when w
 Reference links for this section:
 [URL="http://pastebin.com/GC9kTHcJ"]Commented example of a common function to get module info (using WinAPI)[/URL]
 
+[SIZE="3"][FONT="Franklin Gothic Medium"][I][B]Building a memory management class[/B][/I][/FONT][/SIZE]
+[I]
+(NOTE: This section is going to get really practical, with a lot of commented pieces of C++ source code. But no problems, it's optional! You can skip this if you really want it <3)[/I]
+
+Now that you know what we need to do in order to have fun within CS:GO memory, you can take it a step further and start to code an actual class to make everything easier to do. Our goal is to make a memory management class (aka MMC) that allows us to attach to a specific process and grab modules. It's also going to contain some useful template wrappers to WPM and RPM so everything is going to be easier.
+
+Don't take me wrong, you don't actually NEED this kind of class, you can just go ahead and use raw RPM/WPM or just build the functions and use them without using a class, but imho setting it up using OOP is going to help us.
+In this guide I'm going to use C++ as an example language, but that's not a problem since you can do the really same things (with some little changes :P) using other languages like C#.
+
+So, let's go ahead, this class is going to contain some members, ofc!
+
+[CODE]
+class CMemoryManager
+{
+private: // Private members: We are going to setup some getters later on!
+	HANDLE m_hProcess; // The HANDLE to the process to attach
+	DWORD m_dwProcessId; // The Process Id of the process to attach
+	std::vector<MODULEENTRY32> m_Modules; // std::vector containing all the modules we grab from the process
+[/CODE]
+
+As you can see we've got [I]m_hProcess[/I] which is basically the HANDLE to the process to attach, [I]m_dwProcessId[/I] which is the process id of the process to attach and a basic std::vector of MODULEENTRY32 structs which is going to contain all the modules we grab from the attached process. We use an std::vector so it's easier to push back new elements (modules) without worrying too much about fixed sizes.
+Now, let's make the public functions:
+
+[CODE]
+        // Attach to a process based on strProcessName
+	// Returns true on success, false on failure
+	bool Attach(const std::string& strProcessName)
+	{
+	    // First of all we create a snapshot handle specific for processes
+	    // (notice the usage of TH32CS_SNAPPROCESS) so we are able to call Process32First/Next
+	    // Remeber to close it when you don't use it anymore!
+	    HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, NULL);
+	    // Check if the snapshot created is valid
+	    if (hSnapshot == INVALID_HANDLE_VALUE) return false;
+	   
+	    // Create the helper struct that will contain all the infos about the current process
+	    // while we loop through all the running processes
+	    PROCESSENTRY32 ProcEntry;
+	    // Remember to set the dwSize member of ProcEntry to sizeof(PROCESSENTRY32)
+	    ProcEntry.dwSize = sizeof(PROCESSENTRY32);
+	   
+	    // Call Process32First
+	    if (Process32First(hSnapshot, &ProcEntry))
+	    {
+	        // Notice that you have to enable Multi-Byte character set in order
+	        // to avoid converting everything.
+	        // strcmp is not the only way to compare 2 strings ofc, work with your imagination
+	        if (!strcmp(ProcEntry.szExeFile, ProcessName.c_str()))
+	        {
+	            // If we are here it means that the process has been found, we can
+	            // open an handle to it and return it
+	            // But first of all we have to close the snapshot handle!
+	            CloseHandle(hSnapshot);
+	            // Open an handle and set the m_hProcess member using OpenProcess
+	            // (Notice the usage of PROCESS_ALL_ACCESS flag in order to grant read/write privileges)
+	            m_hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, ProcEntry.th32ProcessID);
+	            // Store the process id into m_dwProcessId
+	            m_dwProcessId = ProcEntry.th32ProcessID);
+	            // Return true meaning success
+	            return true;
+	        }
+	    }
+	    else
+	    {
+	        // If the Process32First call failed, it means that there is no
+	        // process running in the first place, we can return directly.
+	        CloseHandle(hSnapshot);
+	        return false;
+	    }
+	   
+	    // If we are here it means that the Process32First call returned TRUE, but the first process
+	    // wasn't the process that we were searching for. Now we can loop through the processes
+	    // using Process32Next
+	    do
+	    {
+	        // We do the same check we did for Process32First
+	        if (!strcmp(ProcEntry.szExeFile, ProcessName.c_str()))
+	        {
+	            // If we are here it means that the process has been found, we can
+	            // open an handle to it and set the m_hProcess member using OpenProcess
+	            // (Notice the usage of PROCESS_ALL_ACCESS flag in order to grant read/write privileges)
+	            m_hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, ProcEntry.th32ProcessID);
+	            // Store the process id into m_dwProcessId
+	            m_dwProcessId = ProcEntry.th32ProcessID);
+	            // Return true meaning success
+	            return true;
+	        }
+	    }
+	    while (Process32Next(hSnapshot, &ProcEntry));
+	    // Continue loop while the Process32Next call returns TRUE meaning that there are still processes to check
+	   
+	    // If we are here it means that the process has not been found or that there are no processes to scan for anymore.
+	    // We can close the snapshot handle and return false.
+	    CloseHandle(hSnapshot);
+	    return false;
+	}
+[/CODE]
+
+Since I'm using C++ and WinAPI, I'm using the exact same algorithm showed on the previous sections with some little modifies to the return values and comments.
+The same thing can be done with the function to grab a new module from the process:
+
+[CODE]
+// Grabs a module and adds it to m_Modules if found based on strModuleName
+	// Returns true on success, false on failure
+	bool GrabModule(const std::string& strModuleName)
+	{
+	    // First of all we create a snapshot handle specific for modules
+	    // (notice the usage of TH32CS_SNAPMODULE) so we are able to call Module32First/Next
+	    // Remeber to close it when you don't use it anymore!
+	    HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, m_dwProcessId);
+	    // Check if the snapshot created is valid
+	    if (hSnapshot == INVALID_HANDLE_VALUE) return false;
+	   
+	    // Create the helper struct that will contain all the infos about the current module
+	    // while we loop through all the loaded modules
+	    MODULEENTRY32 ModEntry;
+	    // Remember to set the dwSize member of ModEntry to sizeof(MODULEENTRY32)
+	    ModEntry.dwSize = sizeof(MODULEENTRY32);
+	   
+	    // Call Module32First
+	    if (Module32First(hSnapshot, &ModEntry))
+	    {
+	        // Notice that you have to enable Multi-Byte character set in order
+	        // to avoid converting everything.
+	        // strcmp is not the only way to compare 2 strings ofc, work with your imagination
+	        if (!strcmp(ModEntry.szModule, ModuleName.c_str()))
+	        {
+	            // If we are here it means that the module has been found, we can add the module to the vector
+	            // But first of all we have to close the snapshot handle!
+	            CloseHandle(hSnapshot);
+	            // Add ModEntry to the m_Modules vector
+	            m_Modules.push_back(ModEntry); // You can add a check here to see if the module is already there ;)
+	            // Return true meaning success
+	            return true;
+	        }
+	    }
+	    else
+	    {
+	        // If the Process32First call failed, it means that there is no
+	        // process running in the first place, we can return directly.
+	        CloseHandle(hSnapshot);
+	        return false;
+	    }
+	   
+	    // If we are here it means that the Module32First call returned TRUE, but the first module
+	    // wasn't the module that we were searching for. Now we can loop through the modules
+	    // using Module32Next
+	    do
+	    {
+	        // We do the same check we did for Module32First
+	        if (!strcmp(ModEntry.szModule, ModuleName.c_str()))
+	        {
+	            // If we are here it means that the module has been found, we can add the module to the vector
+	            // But first of all we have to close the snapshot handle!
+	            CloseHandle(hSnapshot);
+	            // Add ModEntry to the m_Modules vector
+	            m_Modules.push_back(ModEntry); // You can add a check here to see if the module is already there ;)
+	            // Return true meaning success
+	            return true;
+	        }
+	    }
+	    while (Module32Next(hSnapshot, &ModEntry));
+	    // Continue loop while the Module32Next call returns TRUE meaning that there are still modules to check
+	   
+	    // If we are here it means that the module has not been found or that there are no modules to scan for anymore.
+	    // We can close the snapshot handle and return false.
+	    CloseHandle(hSnapshot);
+	    return false;
+	}
+[/CODE]
+
+As you can see it's the exact same algorithm with some little modifications! Again, this isn't the only way to do this, depending on what you are using.
+
+Now that we've got the core functions that will perform the algorithms we need, we can build our constructor which will initialize the class. As always everything is pretty straight forward and commented.
+
+[CODE]
+        // Default constructor: won't attach to any process
+	CMemoryManager()
+	{
+		// Init members
+		m_hProcess = INVALID_HANDLE_VALUE;
+		m_dwProcessId = 0;
+		// Just for safety, I clear out the modules vector
+		m_Modules.clear();
+	}
+	// This constructor will attach to a specific process (default CS:GO)
+	CMemoryManager(const std::string& strProcessName = "csgo.exe")
+	{
+		// Init members
+		m_hProcess = INVALID_HANDLE_VALUE;
+		m_dwProcessId = 0;
+		// Just for safety, I clear out the modules vector
+		m_Modules.clear();
+		// Attach and throw if the function failed so we can manage the fail
+		if (!Attach(strProcessName))
+			throw;
+	}
+[/CODE]
+
+Now we can start writing our RPM/WPM wrappers, I'll stay simple for now but you can get further by adding things like reading a fixed size of memory, reading an array and returning a pointer to it, and so on... just use your imagination! :)
+
+[CODE]
+// RPM/WPM wrappers
+	
+	// Read a value from memory and put it in Value
+	// Returns true on success, false on failure
+	template <class T>
+	inline bool Read(DWORD dwAddress, T& Value)
+	{
+		return ReadProcessMemory(m_hProcess, reinterpret_cast<LPVOID>(dwAddress), Value, sizeof(T), NULL) == TRUE;
+	}
+	// Write a Value in memory
+	// Returns true on success, false on failure
+	template <class T>
+	inline bool Write(DWORD dwAddress, const T& Value)
+	{
+		return WriteProcessMemory(m_hProcess, reinterpret_cast<LPVOID>(dwAddress), Value, sizeof(T), NULL) == TRUE;
+	}
+[/CODE]
+
+Nothing really special here, as you can see these are just functions that wraps RPM and WPM using templates.
+Finally, we can put some getters to conclude the class.
+
+[CODE]
+// Getters
+HANDLE GetHandle() { return m_hProcess; }
+DWORD GetProcId() { return m_dwProcessId; }
+std::vector<MODULEENTRY32> GetModules() { return m_Modules; }
+[/CODE]
+
+Do I really need comments here?
+Remember to implement this class (if using C++) following the classic .h/.cpp separation convention.
+
+Reference links for this section:
+[URL="http://pastebin.com/cfF01nEZ"]Commented MMC on pastebin[/URL]
+
 [B][I]...WORK IN PROGRESS...[/I][/B]
 
 This guide, as I already said, is not complete and still needs a lot of work. I'll update it with new sections and chapters throughout these days. You can help me updating/correcting/getting better this guide using his [URL="https://github.com/DoubleHub/CSGOCheatMaking101/blob/master/Guide.txt"]GitHub repo[/URL].
