@@ -415,6 +415,27 @@ Remember to implement this class (if using C++) following the classic .h/.cpp se
 Reference links for this section:
 [URL="http://pastebin.com/cfF01nEZ"]Commented MMC on pastebin[/URL]
 
+[SIZE="5"][FONT="Franklin Gothic Medium"][B]Chapter 3[/B][/FONT][/SIZE]
+[SIZE="4"][FONT="Franklin Gothic Medium"][B]Offsets[/B][/FONT][/SIZE]
+
+One of the most important topics to know while learning about memory hacking is the purpose of an offset. In these chapters, I'll try to explain what an offset is and how to use them to access our values in memory. I'll then move into explaining netvars and then I'll talk about how to grab offsets and netvars dynamically.
+But first, what is an offset?
+
+An offset is a value that describes how many bytes we should move to reach a certain area of memory. Refer to this basic image to understand the concept:
+
+[IMG]http://i.imgur.com/8ZeSlWE.png[/IMG]
+
+As you can see, we've got a base address located at 0x0000, a local player's pointer located at 0x004C and the local player's health which is located at 0x007E. Our objective is to read out the health value of the local player.
+
+Now, to reach the local player's pointer we need to move 0x004C away from the base address (since 0x004C - 0x000 = 0x004C), so we would just do a basic RPM call: RPM(base address + 0x004C) where 0x004C is the offset. By using RPM we are dereferencing the pointer located at that address meaning that we've now got the real local player and not just a pointer to it. To get his health we apply the same concept. 0x007E - 0x004C = 0x0032 meaning that the offset is 0x0032. Now we can just do RPM(local player + 0x0032) to get the health we wanted. Now, you may be thinking "what if I just do RPM(0x007E)" since it's a static address? That's correct, but remember that we are doing a really basic example. Normally, we use the module base address as our base address (client.dll or engine.dll or others), and usually this address is dynamic, meaning that it will change at each launch of the game. This means that if the base address changes, the whole set of addresses will change, also changing the ones we want to reach. But the difference between the local player's pointer and the base address will always be the same, the same offset.
+
+So, for example, specifically for CS:GO, the current offset for the local player is 0xA323E4, while the module base of client.dll will be dynamic, so we can't give a certain value for it (that's why we use that algorithm showed on previous sections).
+By doing RPM(base address + 0xA323E4) we get the local player. 0xA323E4 is an offset, it tells us how many bytes we must move if we want to reach something in memory. Other examples of offsets are entity list (0x4A4FCA4), force jump (0x4EE5114) and many others.
+
+[B]Be careful![/B] The current offsets are static values which means that if there is a little change to the code the addresses set will modify, modifying the values of the offsets. On each update, the offsets will be most likely outdated. You have to re-grab them using an offset dumper, or just implement pattern scanning (we'll cover that later on).
+
+Is m_iHealth (0xFC) an offset? Kinda yes, because we use it like the normal offsets, but it's more specifically a netvar. We'll cover them, also.
+
 [B][I]...WORK IN PROGRESS...[/I][/B]
 
 This guide, as I already said, is not complete and still needs a lot of work. I'll update it with new sections and chapters throughout these days. You can help me updating/correcting/getting better this guide using his [URL="https://github.com/DoubleHub/CSGOCheatMaking101/blob/master/Guide.txt"]GitHub repo[/URL].
