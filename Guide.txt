@@ -228,7 +228,7 @@ Now, let's make the public functions:
 	        // Notice that you have to enable Multi-Byte character set in order
 	        // to avoid converting everything.
 	        // strcmp is not the only way to compare 2 strings ofc, work with your imagination
-	        if (!strcmp(ProcEntry.szExeFile, ProcessName.c_str()))
+	        if (!strcmp(ProcEntry.szExeFile, strProcessName.c_str()))
 	        {
 	            // If we are here it means that the process has been found, we can
 	            // open an handle to it and return it
@@ -257,7 +257,7 @@ Now, let's make the public functions:
             while (Process32Next(hSnapshot, &ProcEntry))
             {
 	        // We do the same check we did for Process32First
-	        if (!strcmp(ProcEntry.szExeFile, ProcessName.c_str()))
+	        if (!strcmp(ProcEntry.szExeFile, strProcessName.c_str()))
 	        {
 	            // If we are here it means that the process has been found, we can
 	            // open an handle to it and set the m_hProcess member using OpenProcess
@@ -305,7 +305,7 @@ The same thing can be done with the function to grab a new module from the proce
 	        // Notice that you have to enable Multi-Byte character set in order
 	        // to avoid converting everything.
 	        // strcmp is not the only way to compare 2 strings ofc, work with your imagination
-	        if (!strcmp(ModEntry.szModule, ModuleName.c_str()))
+	        if (!strcmp(ModEntry.szModule, strModuleName.c_str()))
 	        {
 	            // If we are here it means that the module has been found, we can add the module to the vector
 	            // But first of all we have to close the snapshot handle!
@@ -330,7 +330,7 @@ The same thing can be done with the function to grab a new module from the proce
             while (Module32Next(hSnapshot, &ModEntry))
 	    {
 	        // We do the same check we did for Module32First
-	        if (!strcmp(ModEntry.szModule, ModuleName.c_str()))
+	        if (!strcmp(ModEntry.szModule, strModuleName.c_str()))
 	        {
 	            // If we are here it means that the module has been found, we can add the module to the vector
 	            // But first of all we have to close the snapshot handle!
@@ -435,6 +435,249 @@ By doing RPM(base address + 0xA323E4) we get the local player. 0xA323E4 is an of
 [B]Be careful![/B] The current offsets are static values which means that if there is a little change to the code the addresses set will modify, modifying the values of the offsets. On each update, the offsets will be most likely outdated. You have to re-grab them using an offset dumper, or just implement pattern scanning (we'll cover that later on).
 
 Is m_iHealth (0xFC) an offset? Kinda yes, because we use it like the normal offsets, but it's more specifically a netvar. We'll cover them, also.
+
+[SIZE="3"][FONT="Franklin Gothic Medium"][I][B]Using our class and the offsets to make our first bhop[/B][/I][/FONT][/SIZE]
+[I]
+(NOTE: This section is going to get really practical, with a lot of commented pieces of C++ source code. But no problems, it's optional! You can skip this if you really want it <3)[/I]
+
+Well, after a little bit of summer VACation, I'm back on track writing this piece of ""guide"" (?). We are back again with another practical lesson, which will involve commented sauce which you can test and try on your own (no anti-pasta included, just read that comments ok? :( ).
+
+So, remember that MMC (Memory Management Class) we built some lessons ago? Idk how you built it, if you used the exact same structure that I used, if you used more C++11 modern style, or whatever, but in the end the logic is always the same: using RPM/WPM wrappers, we'll read and write CS:GO memory to achieve the results we want from our cheat. In this case, we are going to achieve the most basic thing you'll ever want for CS:GO, an automatic bunnyhop software. Many ppl call it "bhop script" but that's not an exact definition, since we are reading (and writing, if you want) actual CS:GO memory, so yeah this is a real program, not a script of any sort. Hence why I call it bhop cheat or bhop software.
+
+Before going practical, we need to fully understand what we want to achieve and the logic behind it in our mind before writing source code. Everyone here knows what bhopping is, right? For the 2 ppl here who doesn't know anything, bhop (Bunny Hop) is a technique that takes advantage of jumping/strafing to gain a lot of speed (we can reach stable ~300 velocity, which is a lot). It's really famous on Source based games, like CS:GO (but it was way more useful and funny on CS:S), but it also works on other kind of games, especially arena shooters.
+
+So, how shall we proceed to make a program that does the "heavy lifting" of bhopping for us, allowing to gain speed easily without practicing like a nerd?
+You may think, at a first glance: "What if I just make a program that spams the space key while you are pressing it". I'd say that you can make a macro for that without making a whole software, but in the end of the day this method is quite shit and not precise, you won't gain any velocity in most of the cases, especially in server running at 128 ticks.
+
+Thinking logical, what is the most difficult part of bhopping? Timing the jumping. [I]When we are on ground, we have to jump immediately to gain velocity.[/I]. See this sentence, we can translate this logic into actual C++ source code. All we need to know is exactly when we are on ground. How can we do this? Simple: we'll use a special bitflag (stored in CS:GO memory) that holds all kinds of player states: on ground, crouching, zooming, etc. We need to check for ground, so yeah, quite straight-forward. We can start writing sauce!
+
+[CODE]
+// First of all, include your Memory Management Class. I won't include anything else other than basic C++ i/o because MMC header already includes WinAPI
+#include "MemoryManager.h"
+#include <iostream> // For STL i/o
+#include <ctime> // For std::chrono
+#include <thread> // For std::this_thread
+
+int main()
+{
+    // Main entry point of the program
+    return 0;
+}
+[/CODE]
+
+Depending on your implementation of MMC, the approach will be different. In this example, I'll use the MMC written on the previous section of the guide.
+
+[CODE]
+try {
+    CMemoryManager* MemoryManager = new CMemoryManager("csgo.exe");
+} catch (...) {
+    // Process not found or invalid snap handle, manage the failure safely
+    std::cout << "CS:GO not found!" << std::endl;
+    std::this_thread::sleep_for(std::chrono::milliseconds(1500)); // Sleep for 1500 secs so the user can see the error
+    return 0; // Quit the program
+}
+[/CODE]
+
+Now we have got our MemoryManager instance ready to go. We will operate on client.dll only since all the offsets we need are there.
+
+[CODE]
+if (!MemoryManager->GrabModule("client.dll"))
+{
+    // Client module not found, manage the failure
+    std::cout << "Client module not found!" << std::endl;
+    std::this_thread::sleep_for(std::chrono::milliseconds(1500)); // Sleep for 1500 secs so the user can see the error
+    return 0; // Quit the program
+}
+[/CODE]
+
+Now, following my implementation, we've added client.dll module infos to the m_Modules private member of the MMC. We need the client base address to grab the local player, I'll do smth like this
+
+[CODE]
+DWORD dwClientBase = 0; // This will hold the client base address
+for (auto m : MemoryManager->GetModules()) // Loop through the modules grabbed
+{
+    if (!strcmp(m.szModule, "client.dll"))
+    {
+        dwClientBase = reinterpret_cast<DWORD>(m.modBaseAddr);
+        break;
+    }
+}
+[/CODE]
+
+Even if we've got only one module so far, this implementation will allow us to work with many modules in an easy way. Sorry for the mixture of C++11 practices like enhanced for and reinterpret_cast and C stuff like strcmp and DWORD but yeah this is just demonstrative (worst excuse ever lol)
+
+Well, now we've got our client base address. Cool, huh? Using the MMC and the local player offset (grabbed from the so-loved [URL="http://www.unknowncheats.me/forum/counterstrike-global-offensive/103220-global-offensive-structs-offsets-277.html"]offsets thread[/URL]), we are able to retrieve our local player for our needs.
+
+[CODE]
+DWORD dwLocalPlayer = 0; // This will hold our local player base address
+MemoryManager->Read<DWORD>(dwClientBase + 0x00A3A43C, dwLocalPlayer); // Dereference the pointer to the local player from process memory and grab the base address value
+[/CODE]
+
+Now, how we can check if the local player is on ground or not? Each entity has got a member called m_fFlags, which is a bitfield located at base + 0x100 (256). We can operate on this member quite easily using our bitfield knownledge (because you've got bitfield knownledge, right?) We can compare stuff using the & operator (bitwise and), and other cool stuff. Read more about bitfields/masks see [URL="http://www.learncpp.com/cpp-tutorial/3-8a-bit-flags-and-bit-masks/"]here[/URL].
+
+From the SDK, we know that the flag value to check if on ground is [I](1<<0)[/I] ([URL="https://github.com/ValveSoftware/source-sdk-2013/blob/master/mp/src/public/const.h#L110"]FL_ONGROUND[/URL]) so we can stick on it.
+
+[CODE]
+// We'll put everything into a while(true) loop later on
+// Read m_fFlags out of memory
+BYTE fFlags = 0; // This will hold the bitfield
+MemoryManager->Read<BYTE>(dwLocalPlayer + 0x100, fFlags);
+
+// Continue only if the user is holding space
+if (GetAsyncKeyState(VK_SPACE) & 0x8000)
+{
+    if (fFlags & (1<<0)) // Check for FL_ONGROUND
+    {
+        // Continue...
+    }
+}
+[/CODE]
+
+Now we can choose 2 ways. One way will involve using a WPM call to force a jump directly from memory, the other way will involve using the WinAPI to simulate a mouse scroll, but the user will have to bind +jump to mouse scroll in game, so yeah not completely portable. In this example I'll just stick to memory writing, because paranoias in these cases is reall (really) useless (CS:GO will just pretend you are not there).
+
+So, there is an offset that will work perfectly: m_dwForceJump. Basically, based on the value that m_dwForceJump have got, the game will either jump, not jump, or jump for one tick. This is just what we need! We write 4 to it to reset jump, 5 to jump, 6 to jump for one tick. In order to reduce WPM/RPM calls to minimal, writing 6 will be as perfect as writing 5 then 4 after a small sleep.
+
+[CODE]
+MemoryManager->Write(dwClientBase + 0x02E97EC4, 6); // Will force jump for 1 tick only
+[/CODE]
+
+With this method we can achieve near to perfect hops with the minimal effort.
+The final code snippet will look something along the lines of this (remember that you'll have to adapt the source based on your MMC implementation!):
+
+[CODE]
+// First of all, include your Memory Management Class. I won't include anything else other than basic C++ i/o because MMC header already includes WinAPI
+#include "MemoryManager.h"
+#include <iostream> // For STL i/o
+#include <ctime> // For std::chrono
+#include <thread> // For std::this_thread
+
+int main()
+{
+    // Main entry point of the program
+	
+	try {
+		CMemoryManager* MemoryManager = new CMemoryManager("csgo.exe");
+	} catch (...) {
+		// Process not found or invalid snap handle, manage the failure safely
+		std::cout << "CS:GO not found!" << std::endl;
+		std::this_thread::sleep_for(std::chrono::milliseconds(1500)); // Sleep for 1500 secs so the user can see the error
+		return 0; // Quit the program
+	}
+	
+	if (!MemoryManager->GrabModule("client.dll"))
+	{
+		// Client module not found, manage the failure
+		std::cout << "Client module not found!" << std::endl;
+		std::this_thread::sleep_for(std::chrono::milliseconds(1500)); // Sleep for 1500 secs so the user can see the error
+		return 0; // Quit the program
+	}
+	
+	DWORD dwClientBase = 0; // This will hold the client base address
+	for (auto m : MemoryManager->GetModules()) // Loop through the modules grabbed
+	{
+		if (!strcmp(m.szModule, "client.dll"))
+		{
+			dwClientBase = reinterpret_cast<DWORD>(m.modBaseAddr);
+			break;
+		}
+	}
+	// TODO:: Add check to see if we didn't find a valid client base ;)
+	
+	while (true)
+	{
+		DWORD dwLocalPlayer = 0; // This will hold our local player base address
+		MemoryManager->Read<DWORD>(dwClientBase + 0x00A3A43C, dwLocalPlayer); // Dereference the pointer to the local player from process memory and grab the base address value
+		
+		// TODO:: Add checks to control RPM/WPM failures!
+		
+		// We'll put everything into a while(true) loop later on
+		// Read m_fFlags out of memory
+		BYTE fFlags = 0; // This will hold the bitfield
+		MemoryManager->Read<BYTE>(dwLocalPlayer + 0x100, fFlags);
+
+		// Continue only if the user is holding space
+		if (GetAsyncKeyState(VK_SPACE) & 0x8000)
+		{
+			if (fFlags & (1<<0)) // Check for FL_ONGROUND
+			{
+				MemoryManager->Write(dwClientBase + 0x02E97EC4, 6); // Will force jump for 1 tick only
+			}
+		}
+		
+		// Sleep 10 ms to save CPU
+		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+	}
+	
+    return 0;
+}
+[/CODE]
+
+I've added comments with TODO in sauce that will serve as a little "homework" to you to improve this snippet.
+The other homework you have is to make it so it doesn't jump while the chat is open. There are many ways to achieve this, just choose one. Search around and you'll always find what you need ;) (in most cases).
+
+[SIZE="3"][FONT="Franklin Gothic Medium"][I][B]Netvars[/B][/I][/FONT][/SIZE]
+
+Before jumping into pattern scanning, I'd like to talk about netvars. A [B]Net[/B]worked [B]Var[/B]iable (aka a netvar) is, as the name may suggest, a variable which is networked. A first example of a netvar would be m_iHealth (0xFC) or m_iTeamNum (0xF0) which are variables that ofc need to be networked in order to make the whole multiplayer thing to work you know. 
+
+These special variables are used exactly like any other offset: for example, m_iHealth is a member of DT_BasePlayer (DT stands for [B]D[/B]ata [B]T[/B]able, notice the m_i hungarian notation prefix which Valve uses a lot). There are many data tables like DT_CSPlayer, DT_BaseViewModel, etc...
+
+So, let's say we want to grab the amount of matchmaking wins of a certain player on the server. The first thing that would come in our mind if we don't know anything would be "There must be a netvar that holds this value!" and that's true, it's called m_iCompetitiveWins, it's an integer value as the convention suggests and yes it's exactly what we want. You try to do smth like RPM(entity base address + m_iCompetitiveWins offset) BUT the result is really fucked up and not exactly what we want. That's because you didn't notice that m_iCompetitiveWins isn't a member of DT_CSPlayer or BasePlayer! Hence why we can't read it as we do with other netvars which are members of that data table. Rewatch the netvar dump carefully and you'll notice that m_iCompetitiveWins is a member of DT_CSPlayerResource! So we need to read it differently from what we usually do. So since it's CSPlayerResource it will hold 64 values for each client connected to server, meaning that we need the entity index of the player we want to read the wins from. We'll do smth like RPM(player resource base + m_iCompetitiveWins + i * sizeof(int)) where i is the index of our entity, and since each member of the array is an integer, we do i * sizeof(int) (we could just do i * 4 but ayyyy).
+
+Basically, if we want to grab something from a certain player or the local player itself, remember that there will most likely always be a netvar that holds the value we are looking for. Really, there are a shitton of netvars so just take the right time to search through the dump and you'll find what you want in most cases. See how a really basic netvar dump can be really really useful? In the next section we'll cover pattern scanning, then we will cover how these dumps are made, involving recursion... will be really cool stuff indeed! :D
+
+[SIZE="3"][FONT="Franklin Gothic Medium"][I][B]Getting offsets dynamically: Pattern Scanning[/B][/I][/FONT][/SIZE]
+
+Started from the bottom now we are here: we are going to talk about pattern scanning. This is an important step to take if you want to take your externals to the next levels, simply because [B]the only purpose of pattern scanning is to completely eliminate the hassle of updating offsets on each update on the game.[/B]
+For example: the offsets I've used previously in the example codenz some weeks ago are already outdated now, because of CS:GO updates. In order to make your external more consistent and reduce the work you have to put on it to mantain it, you can implement the infamous pattern scanning.
+
+Still this guide is aimed to completely noobish ppl I don't really want to get any kind of deeper in pattern scanning ([URL="http://www.unknowncheats.me/forum/programming-for-beginners/171994-understanding-pattern-scanning-concept.html"]like WasserEsser did in his awesome guide, which I recommend reading after you grasp the concept[/URL]). I just want you to understand how it works and how to implement it in your fantastic ez external cheaterino.
+
+So, the concept behind pattern scanning (basically speaking) is to "build the offset" we are going to use later on in the cheat code. Each CS:GO module (like client.dll or engine.dll) is composed of bytes (raw bytes) which can be seen when reversing a module in OllyDbg or any other reversing tool. The offset we need is of course lying through these bytes, because the game itself uses offsets internally to access certain areas of memory (like we do with our externals!). We just have to grab it without forcing it, but how? The answer is quite simple: we use the sorrounding bytes of the offsets. See this image taken from WasserEsser guide:
+
+[IMG]http://i.imgur.com/HDlH0AK.png[/IMG]
+
+FC 00 00 00 is m_iHealth (stored in little endian system), a common netvar we know to grab the health of an entity. In the image, the sorrounding bytes of the offset are highlighted in gray (so you can see them). These bytes are going to compose our pattern. Using OllyDbg specifically, we can simply use the SigMaker plugin, or if you are really brave you can make the sig on your own just by looking at the bytes (SigMaker just simplifies the process).
+
+In this specific case, the signature is "\x75\x09\x83\xB9[B]\xFC\x00\x00\x00\x00\[/B]x7F\x2D". We see that the current offset is lying in the pattern, and we don't want it to be there so we nullify it (by just modifying the xFC to x00 in this specific case). Now, we have got the pattern we need. The mask is just derived from the pattern: it's a string describing which byte is known and which byte isn't known. In this case:
+
+x75\ -> x
+x09\ -> x
+x83\ -> x
+xB9\ -> x
+x00\ -> ?
+x00\ -> ?
+x00\ -> ?
+x00\ -> ?
+x00\ -> ?
+x7F\ -> x
+x2D\ -> x
+
+So the final mask is "xxxx?????xx". Simple, huh? With the pattern and the mask in our hands, we can proceed to make our pattern scanning implementantion in C++ code.
+To understand how the algorithm is going to work, just look at this picture:
+
+[IMG]http://i.imgur.com/OWAG2k2.png[/IMG]
+
+This horrific thing made on paint in 2 mins represents how the pattern scanning is going to work with module bytes. Basically, in the image we have got 4 possible places to place our pattern. We loop through all of the possible places until we find the only one that fits our pattern (the third one obviously). Now, you may ask "What if I encounter a fitting place but it's not where my offset is lying?". That can happen (but it's really not that likely...) and that's what we want to make patterns as unique as possible. Also, we don't want them to be too long or too short, because a too long pattern will get outdated in less time than a good sized pattern. In the end, it's way better than hardcoding offsets.
+That's also how the offsets dumper we commonly use to grab offsets work, each one with a different kind of implementation. Just like with MMC (Memory Management Class, remember?), the code style possibilities are really wide, so my commented implementation will be just a small example to let you understand, nothing more.
+
+In order to do pattern scanning, I commonly use a class...
+[CODE]
+// This is the skeleton of the class
+class CScanner
+{
+protected:
+	HANDLE* m_pHandle; 						// A pointer to a valid handle (to CS:GO ofc)
+	DWORD 	m_dwModuleBase; 				// Base of the module we want to scan
+	DWORD 	m_dwModuleSize;					// Size of the module we want to scan
+	std::unique_ptr<BYTE[]> m_pModuleBytes;	// Bytes of the module
+public:
+	// Here I'm going to define the scanning functions
+};
+[/CODE]
+
+The members of the class are quite obvious and that's all we need. The first step is to dump the module bytes, which means storing the whole module into a byte array. Yeah, that sounds crazy. It is, actually, considering that a module is really really heavy (just log the module size of client.dll or engine.dll). This means that we need to take care of memory leaks because if we leak this huge amount of memory, that's not a good thing. At all. That's why I'm using the STL type std::unique_ptr. It's a C++11 thing that allows me to make a smart pointer, which will delete itself when it gets out of scope (when we delete a class instance, in this case). Kinda handy, huh? It will take care of avoiding memory leaks, hopefully, but you can do whatever you want honestly.
+
+[WORK IN PROGRESS ===== ADDING THE CODE]
 
 [B][I]...WORK IN PROGRESS...[/I][/B]
 
