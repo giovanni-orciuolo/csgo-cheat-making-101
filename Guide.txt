@@ -672,12 +672,61 @@ protected:
 	std::unique_ptr<BYTE[]> m_pModuleBytes;	// Bytes of the module
 public:
 	// Here I'm going to define the scanning functions
+	
+	//You can get the module date inside the constructor or if you already have them somewhere else take them as parameters
+	//Then just set the class values to them
+	CScanner( HANDLE* process, DWORD dwModuleBase, DWORD dwModuleSize);
+	
+	//This function just reads a DWORD at the offset from the FindPattern func + readOffset in the m_pModuleBytes variable to a buffer and returns it
+	//Tip: Look up the memcpy function [URL="https://msdn.microsoft.com/en-us/library/aa246468(v=vs.60).aspx"]here[/URL]
+	DWORD GetOffset( std::vector<BYTE> pattern, DWORD readOffset);
+	
+	//You can take that function from [URL="https://www.unknowncheats.me/forum/programming-for-beginners/171994-understanding.html"]WasserEsser's tutorial[/URL] because the implementation of it is just great(just scroll down a bit)
+	DWORD FindPattern( std::vector<BYTE> pattern);
+	
+	//This function just calls this->m_pModuleBytes.reset() which frees the memory in which the module was dumped
+	//Keep in mind that after calling this the class needs to be reinitialized because there is no more data to find a pattern in
+	//Note: There are probably cleaner ways to do this
+	void DestroyDataPtrs();
 };
 [/CODE]
 
 The members of the class are quite obvious and that's all we need. The first step is to dump the module bytes, which means storing the whole module into a byte array. Yeah, that sounds crazy. It is, actually, considering that a module is really really heavy (just log the module size of client.dll or engine.dll). This means that we need to take care of memory leaks because if we leak this huge amount of memory, that's not a good thing. At all. That's why I'm using the STL type std::unique_ptr. It's a C++11 thing that allows me to make a smart pointer, which will delete itself when it gets out of scope (when we delete a class instance, in this case). Kinda handy, huh? It will take care of avoiding memory leaks, hopefully, but you can do whatever you want honestly.
+If you think about it you should be able to write the class from the comments (If you don't have a clue because the comments were to hard to understand you can look [URL="https://www.unknowncheats.me/forum/programming-for-beginners/171994-understanding.html"]here[/URL]).
+
+Now you can initialize the class for a module in your main and read offsets:
+[CODE]
+//Initialize a CScanner for the client module
+//Tip: You can create functions in the CMemoryManager class to return the pointer to csgo + the module base and size of the module you want (in our example "client.dll")
+//Tip for the Tip: you can reinterpret_cast modBaseAddr to DWORD to get the module base address
+CScanner clientScanner = CScanner(processHandle, dwClientBase, dwClientSize);
+
+//Initialize the pattern vector with the dwLocalPlayer sig that I will use as an example
+//Remember that I'm working with the FindPattern function by WasserEsser that ignores 0x00 in the scanning process
+std::vector<BYTE> pattern = {0x33, 0xFF, 0xA1, 0x00, 0x00, 0x00, 0x00, 0x33, 0xC9};
+DWORD off_LocalPlayer = clientScanner.GetOffset(pattern, 0x3); //The readOffset is 0x3 because the offset lies after the third byte in the sig
+
+//Free up memory
+clientScanner.DestroyDataPtrs();
+
+//Read the pointer to the local Player
+DWORD dwLocalPlayer = 0;
+MemoryManager->Read<DWORD>(dwClientBase + off_LocalPlayer, dwLocalPlayer);
+
+//Read the Health of the local Player
+int Health = 0;
+MemoryManager->Read<int>(dwLocalPlayer + 0xFC, Health);
+
+std::cout << "Your Health: " << Health << std::endl; //If everything went fine the console should now print your Health
+[/CODE]
+
+As you (hopefully) can see pattern scanning is actually not that complicated. If you got the basic concept of how the FindPattern function works and you can write it yourself you (almost) understand the whole concept of pattern scanning as a whole because the other stuff is just reading the offset and using it to actually get infos we want. The last important thing you are missing is how to get the patterns to find the offsets. If you want to know how to get them you can look in [URL="https://www.unknowncheats.me/forum/programming-for-beginners/171994-understanding.html"]WasserEsser's tutorial[/URL] because I would just repeat what he is saying there. But if you're lazy you can just find the sigs with a quick google search or in our beloved [URL="http://www.unknowncheats.me/forum/counterstrike-global-offensive/103220-global-offensive-structs-offsets-277.html"]offsets thread[/URL].
+
+Btw, as long as this tutorial doesn't contain Chapter 3.4 a tip: There are sigs for netvars as well ;)
+
 
 [WORK IN PROGRESS ===== ADDING THE CODE]
+[WORK IN PROGRESS ===== TRYING TO FIND TIME TO WRITE DAT STUFF]
 
 [B][I]...WORK IN PROGRESS...[/I][/B]
 
