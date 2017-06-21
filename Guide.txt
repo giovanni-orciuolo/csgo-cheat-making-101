@@ -7,7 +7,7 @@ NOTE: This guide is still a HUGE work in progress. You can use the GitHub repo t
 [B]Chapter 1[/B] ~ Explaining CS:GO
 [I]Chapter 1.1[/I] ~ Brief introduction to the Source Engine
 [I]Chapter 1.2[/I] ~ Different types of cheats
-[I]Chapter 1.3[/I] ~ Talking about VAC: Ring0 and Ring3
+[I]Chapter 1.3[/I] ~ Talking about VAC: Ring0 and Ring3 (OPTIONAL)
 [B]Chapter 2[/B] ~ External Cheats: The starting point
 [I]Chapter 2.1[/I] ~ Brief introduction to WinAPI
 [I]Chapter 2.2[/I] ~ Managing CS:GO memory: RPM and WPM
@@ -87,8 +87,10 @@ Reference links for this section:
 [URL="http://www.unknowncheats.me/forum/counterstrike-global-offensive/183376-fx-cs-public-release.html"]An example of an internal cheat (FX)[/URL]
 [URL="http://www.unknowncheats.me/forum/counterstrike-global-offensive/159299-internal-external-customizable-multi-hack.html"]An example of an internal/external cheat[/URL]
 
-[SIZE="3"][FONT="Franklin Gothic Medium"][I][B]Talking about VAC: Ring0 and Ring3[/B][/I][/FONT][/SIZE]
+[SIZE="3"][FONT="Franklin Gothic Medium"][I][B]Talking about VAC: Ring0 and Ring3 (OPTIONAL)[/B][/I][/FONT][/SIZE]
 [I]
+You can skip this chapter without any kind of problem.
+
 (NOTE: I may say something wrong or bullshit in this specific section. VAC experts and kernel mode experts, help me! <3)[/I]
 
 The main anticheat that CS:GO is using is the [B]V[/B]alve [B]A[/B]nti-[B]C[/B]heat (aka VAC), which is supposed to block cheaters but we all know that it fails miserably. Basically, the VAC is a joke. You don't need to be too much afraid of it since it won't bust you if you aren't using a public cheat. The VAC is using signature scanning in order to detect cheats. When a cheat becomes detected by VAC it means that the VAC detected his signature (which is an unique identifier for something) and stored it in his database. When you are using a cheat with a detected signature, you are fucked (flagged).
@@ -666,9 +668,9 @@ In order to do pattern scanning, I commonly use a class...
 class CScanner
 {
 protected:
-	HANDLE* m_pHandle; 						// A pointer to a valid handle (to CS:GO ofc)
+	HANDLE m_hProcess; 						// A valid handle (to CS:GO ofc)
 	DWORD 	m_dwModuleBase; 				// Base of the module we want to scan
-	DWORD 	m_dwModuleSize;					// Size of the module we want to scan
+	DWORD 	m_dwModuleSize;				// Size of the module we want to scan
 	std::unique_ptr<BYTE[]> m_pModuleBytes;	// Bytes of the module
 public:
 	// Here I'm going to define the scanning functions
@@ -677,8 +679,145 @@ public:
 
 The members of the class are quite obvious and that's all we need. The first step is to dump the module bytes, which means storing the whole module into a byte array. Yeah, that sounds crazy. It is, actually, considering that a module is really really heavy (just log the module size of client.dll or engine.dll). This means that we need to take care of memory leaks because if we leak this huge amount of memory, that's not a good thing. At all. That's why I'm using the STL type std::unique_ptr. It's a C++11 thing that allows me to make a smart pointer, which will delete itself when it gets out of scope (when we delete a class instance, in this case). Kinda handy, huh? It will take care of avoiding memory leaks, hopefully, but you can do whatever you want honestly.
 
-[WORK IN PROGRESS ===== ADDING THE CODE]
+So what public functions should I expose to the final user of the class a.k.a the cheat coder a.k.a most of the time myself?
+Ofc, we must setup a constructor where we pass the handle, the module base address and the size of the module. The implementation should be really obvious.
+
+Then, we need a function to dump our module bytes to the huge byte array.
+The function will look like this:
+[CODE]
+bool CScanner::Dump()
+{
+    if (m_pModuleBytes != nullptr)
+    {
+        m_pModuleBytes = std::make_unique<BYTE[]>(m_dwModuleSize);
+        return !!ReadProcessMemory(m_hProcess, reinterpret_cast<LPVOID>(m_dwModuleBase), m_pModuleBytes, m_dwModuleSize, 0);
+    }
+    else return false;
+}
+[/CODE]
+
+The function is really simple: if m_pModuleBytes (the byte array containing every single byte in the module) is nullptr (points to nowhere, still not allocated), then we can allocate the memory we need, which is exactly the m_dwModuleSize. So we allocated [I]m_dwModuleSize[/I] bytes in the heap, using the special C++14 function std::make_unique, to setup the unique_ptr. This memory is now "managed": it will be cleaned up upon object destruction.
+This is basically C++ attempt at garbage collecting.
+
+Now that we allocated enough memory, we can just fill up this memory with ReadProcessMemory using our handle to CS:GO. We just read the entire module by passing its base address as the starting point, and the size of the module as the size of the reading. Cool, huh? We simply return bool (converted from BOOL through !!) indicating if the RPM call has been successful.
+
+The other function we need is, ofc, the function to scan memory for a pattern.
+There are several algorithms out there in order to do this, and there is even a thread which contains the fastest methods, especially the one from learn_more that nearly everyone uses in their internals.
+The thread can be found by clicking here: [URL="https://www.unknowncheats.me/forum/c-and-c/125497-findpattern-benchmark.html"]*CLICK*[/URL]
+
+If you are interested, you can glance around in the thread so you can get inspired and write your own or just copy or improve other's methods.
+The implementation I'm currently using in my externals is ofc not the best or fastest one, but it works kinda good.
+
+[CODE]
+// First of all, I setup a quick lambda function to check against the mask.
+// This is the most important function as it makes a really important check.
+// You can move it outside the function scope but idk it depends on you.
+auto mask_check = [&](int start_offset) -> bool
+{
+	// Loop through the mask
+	for (unsigned int i = 0; i < mask.length(); i++)
+	{
+		// If the current char in the mask is a '?', just carry on looping
+		if (mask[i] == '?') continue;
+		// If the current char is a 'x', AND the current byte in the pattern at i is DIFFERENT from the byte
+		// located at start_offset + position in the mask (i)
+		if (mask[i] == 'x' && pattern[i] != module_bytes[start_offset + i])
+			return false; // RETURN FALSE MEANING THAT THE BYTES AND THE PATTERN DO NOT MATCH!
+	}
+	return true; // If the code reaches here without returning false, the patterns and the bytes DO MATCH.
+	// 'i' is the right offset to look for (hopefully)
+};
+[/CODE]
+
+Ok. This can be a really though one to understand. Look at it slowly and you will notice that it makes sense. Now we just need to use this function:
+
+[CODE]
+DWORD CScanner::Search(std::vector<BYTE> pattern, const std::string& mask)
+{
+	// lambda definition here!
+
+	for (DWORD i = 0; i < m_dwModuleBase + m_dwModuleSize; i++)
+	{
+		if (mask_check(i))
+			return m_dwModuleBase + i;
+	}
+}
+[/CODE]
+
+The Search function will just use mask_check while looping through the whole module bytes. When the index is the right one (mask_check returns true), we can just assume that this is the right offset and return module_base + this offset.
+
+Thinking about it, you can make the exact same thing using a string to represent the pattern ;)
+So little homework: Modify the function so you can pass the most commonly used string patterns, avoiding the hassle of converting the string into a usable std::vector.
+
+Remember that you will need to dereference the address found and add some "offset bytes" to it in order to land on the right offset.
+
+[SIZE="3"][FONT="Franklin Gothic Medium"][I][B]Getting netvars dynamically: Netvar Managers and recursion[/B][/I][/FONT][/SIZE]
+
+Some could argue that since every single offset can be sig-scanned, netvar offsets can be sig-scanned too, and that would be more than true, but there is a way better and cleaner way to grab netvar offsets specifically: setting up a netvar manager!
+
+A netvar manager, as the name would suggest, is a manager designed for netvars. It is usually a class responsible for grabbing netvars dynamically, dump them, and stuff like that.
+We already spoke about what netvars are and how the game uses them itself, remember? (If not, see Chapter 3.2 "Netvars").
+
+We already know what netvars are, but how do these work exactly inside the engine?
+Let's look at the structure of a ClientClass inside the Source Engine
+[CODE]
+class ClientClass;
+
+typedef IClientNetworkable*(*CreateClientClassFn)(int iEntNum, int iSerialNum);
+typedef IClientNetworkable*(*CreateEventFn)();
+
+class ClientClass
+{
+public:
+	CreateClientClassFn		m_pCreateFn;
+	CreateEventFn			m_pCreateEventFn;
+	char*				m_pNetworkName;
+	RecvTable*			m_pRecvTable;
+	ClientClass*			m_pNext;
+	int				m_ClassID;
+};
+[/CODE]
+
+[I]m_pCreateFn [/I] is a pointer to the function that gets called whenever we create a new entity of a certain class. 
+For example, some code needs to be run whenever the creates a new instance of class "CC4", or "CAK47".
+[I]m_pNetworkName[/I] is ofc the name of the class, specifically. It can be "CCSPlayer", "CCSPlayerResource" or even "CChicken". Notice the prefix '[B]C[/B]' that stands for [B]c[/B]lass.
+[I]m_pRecvTable[/I] we will get to it in a moment, this is what we really need to accomplish our netvar manager.
+[I]m_pNext[/I] is a pointer to the next ClientClass in the list. We can now understand that there is in the game a linked list of clientclasses and we can access it both externally and internally.
+
+Externally, this is done by sig-scanning the offset for ClientClassHead, which is the head of the list. Using the head of the list, we can walk the whole list until we reach nullptr.
+[URL="https://github.com/frk1/hazedumper/blob/master/config.json#L396"]HazeDumper[/URL] already gives us all we need, basically:
+[CODE]
+"dwGetAllClasses": {
+      "extra": 1,
+      "mode_read": true,
+      "mode_subtract": true,
+      "module": "client.dll",
+      "offset": 0,
+      "pattern": "A1 ? ? ? ? C3 CC CC CC CC CC CC CC CC CC CC A1 ? ? ? ? B9"
+}
+[/CODE]
+Or we can use the static offset which is *atm* 0x4F89EBC but it's due to changes in future patches.
+
+Internally, it's even easier. We can just grab the base client interface and call the function GetAllClasses() directly. GetAllClasses() returns a pointer to the head of the linked list of clientclasses, which comes really handy. Externally, we need to grab the pointer returned by this function.
+
+[I]m_ClassID[/I] should be obvious: it's the numerical class id to identify the class.
+Simply by walking through the linked list of classes, we can easily dump and format every single class id, which is exactly how those class id enum dumps are done.
+
+Returning to [I]m_pRecvTable[/I]:
+
+[CODE]
+class RecvTable
+{
+public:
+	RecvProp*                m_pProps;
+	int                      m_nProps;
+	void*                    m_pDecoder;
+	char*                    m_pNetTableName;
+	bool                     m_bInitialized;
+	bool                     m_bInMainList;
+};
+[/CODE]
 
 [B][I]...WORK IN PROGRESS...[/I][/B]
 
-This guide, as I already said, is not complete and still needs a lot of work. I'll update it with new sections and chapters throughout these days. You can help me updating/correcting/getting better this guide using his [URL="https://github.com/DoubleHub/CSGOCheatMaking101/blob/master/Guide.txt"]GitHub repo[/URL].
+This guide, as I already said, is not complete and needs a lot of work. I'll update it with new sections and chapters throughout these days. You can help me updating/correcting/getting better this guide using his [URL="https://github.com/DoubleHub/CSGOCheatMaking101/blob/master/Guide.txt"]GitHub repo[/URL].
