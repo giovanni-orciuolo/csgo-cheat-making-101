@@ -818,6 +818,65 @@ public:
 };
 [/CODE]
 
+From this struct, we are really interested in only a few of these elements.
+
+[I]m_pProps[/I] points to the beginning of an array of properties.
+An example of property is m_iHealth or m_iTeamNum.
+
+[I]m_nProps[/I] contains the number of elements in the array of props. It is useful when we want to loop over all the props.
+
+[I]m_pNetTableName[/I] this is the name of the table. Remember the name of the class? "CC4" or "CCSPlayer"? Here, the name is just the same but with "DT_" as prefix.
+"CC4" -> "DT_C4"
+"CCSPlayer" -> "DT_CSPlayer", where DT stands for [B]D[/B]ata [B]T[/B]able, ofc.
+
+Now let's take a look at the struct that describes a property "RecvProp":
+
+[CODE]
+class RecvProp
+{
+public:
+	char*                    m_pVarName;
+	SendPropType             m_RecvType;
+	int                      m_Flags;
+	int                      m_StringBufferSize;
+	bool                     m_bInsideArray;
+	const void*              m_pExtraData;
+	RecvProp*                m_pArrayProp;
+	void*                    m_ArrayLengthProxy;
+	RecvVarProxyFn           m_ProxyFn;
+	void*                    m_DataTableProxyFn;
+	RecvTable*               m_pDataTable;
+	int                      m_Offset;
+	int                      m_ElementStride;
+	int                      m_nElements;
+	const char*              m_pParentArrayPropName;
+};
+[/CODE]
+
+Damn, that's a lot of elements! Let's analyze them a bit.
+
+[I]m_pVarName[/I] is kinda obvious. It's a C-style string containing the name of the property. For example "m_iHealth" or "m_iTeamNum".
+
+[I]m_RecvType[/I] is the type of the property. It can be:
+[CODE]
+enum class SendPropType
+{
+	DPT_Int = 0,
+	DPT_Float,
+	DPT_Vector,
+	DPT_VectorXY,	// Only encodes the XY of a vector, ignores Z
+	DPT_String,
+	DPT_Array,		// An array of the base types (can't be of datatables).
+	DPT_DataTable,
+	DPT_Int64,
+	DPT_NUMSendPropTypes
+};
+[/CODE]
+
+[I]m_StringBufferSize[/I] is the maximum size of the string buffer in case the property is a string. To give a clear example, think about the property "m_szLastPlaceName" from DT_BasePlayer. It is a string that contains the name of the last map place visited by a certain player, for example "Long", "Pit", "Tunnel", you know. It can be max 18 chars long, so m_StringBufferSize = 18.
+
+......
+
 [B][I]...WORK IN PROGRESS...[/I][/B]
 
 This guide, as I already said, is not complete and needs a lot of work. I'll update it with new sections and chapters throughout these days. You can help me updating/correcting/getting better this guide using his [URL="https://github.com/DoubleHub/CSGOCheatMaking101/blob/master/Guide.txt"]GitHub repo[/URL].
